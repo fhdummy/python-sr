@@ -46,6 +46,9 @@ dataCopy += data
 # Calculate the disconnect stamps
 disconnectStamps = []
 stampsForBoxplot = []   # These stamps are then used to generate the data for the boxplot, it's just a copy of disconnectStamps
+
+# Create an exact copy of data. With help of this copy I can iterate through the copy and modify elements of the original
+# data.
 dataIterateHelper = []
 dataIterateHelper += data
 
@@ -76,7 +79,7 @@ while currentTime <= endTime:
 
 # Merge timestamps, that are within the variance, to one timestamp. Keep the starttime of the first timestamp that is
 # in variance and sum the values of lost_packets of all the timestamps in variance.
-# This is made for the disconnectStamps
+# This is made for disconnectStamps
 tempStamp = []	# Holds value(s) of lost_packets of all timestamps in variance
 tempStarttime = []	# Value(s) of starttime
 tempEndtime = []	# Value(s) of endtime
@@ -86,9 +89,11 @@ permStamp = []
 permStarttime = []
 permEndtime = []
 
-stamp = 0	# Holds
+stamp = 0   # Holds the temporary summed stamp values
 flag = 0
 
+# Create an exact copy of disconnectStamps. With help of this copy I can iterate through the copy and modify elements of the original
+# disconnectStamps.
 disconnectStampsIterateHelper = []
 disconnectStampsIterateHelper += disconnectStamps
 
@@ -127,18 +132,20 @@ disconnectStampsMerged = zip(permStarttime, permStamp, permEndtime)	# Combine al
 # Merge timestamps, that are within the variance, to one timestamp. Keep the starttime of the first timestamp that is
 # in variance and sum the values of lost_packets of all the timestamps in variance.
 # This is made for the connectStamps
-tempStamp = []	# Holds value(s) of lost_packets of all timestamps in variance
-tempStarttime = []	# Value(s) of starttime
-tempEndtime = []	# Value(s) of endtime
+tempStamp = []  # Holds value(s) of lost_packets of all timestamps in variance
+tempStarttime = []  # Value(s) of starttime
+tempEndtime = []    # Value(s) of endtime
 
 # Perm... is the temporary array for saving all the merged timestamps
 permStamp = []
 permStarttime = []
 permEndtime = []
 
-stamp = 0	# Holds
+stamp = 0   # Holds the temporary summed stamp values
 flag = 0
 
+# Create an exact copy of connectStamps. With help of this copy I can iterate through the copy and modify elements of the original
+# connectStamps.
 connectStampsIterateHelper = []
 connectStampsIterateHelper += connectStamps
 
@@ -171,37 +178,18 @@ while currentTime <= endTime:
 	currentTime += period
 
 connectStampsMerged = []
-connectStampsMerged = zip(permStarttime, permStamp, permEndtime)	# Combine all the merged timestamps to one big array
+connectStampsMerged = zip(permStarttime, permStamp, permEndtime)    # Combine all the merged timestamps to one big array
 
-###################################### IMPORTANT ################################################
-# If this section is stable it also has to be implemented for the disconnectStamp
-###################################### IMPORTANT ################################################
-# This section is considered experimental
-# When the same starttimestamp is in connectStamp than in connectStampsMerged it takes the row of connectStampsMerged
-# and sets the starttimestamp of connectStamp to 0.
-# Furthermore it only makes comparisons when the starttimestamp of connectStamp isn't already 0.
-# for old in connectStamps:
-# 	for new in connectStampsMerged:
-# 		#print(old[0])
-#  		#print("experimental mode on")
-#  		if old[0] != 0:
-#  			if old[0] == new[0]:
-#  				connectStampsFinal.append(new)
-#  				old[0] = 0
-#
-# if not connectStampsMerged:
-# 	connectStampsFinal = connectStamps
-
-# Look for entries that are out of tolerance and out of variance
-# Those are entries that aren't in connectStamp or disconnectStamp, therefore out of tolerance and out of variance
-# Because tolerance and variances has been checked in previous steps and there are only valid entries left
+# Look for entries that are out of tolerance and out of variance.
+# Therefore data can be used, because everything that is out of tolerance and therefore variance has been already
+# deleted out of the data list.
 noEventPackets = []
 noEventPackets += data
 
 # Draw the graph
-figure(num=None, figsize=(15, 10), dpi=96)
+f, ax = plt.subplots(num=None, figsize=(15, 10), dpi=96)
 
-width = 2500000 # Width of the drawn bars
+width = 2.5 # Width of the drawn bars
 
 connectStamp = []
 connectTime = []
@@ -212,6 +200,9 @@ noEventPacketsTime = []
 minmaxListStamp = []
 minmaxListTime = []
 
+# Add all connectStamps and disconnectStamp together.
+# Because for example there are two lists that contain connectStamps: connectStampsMerged and connectStamps.
+# In order to be able to display all, they have to be 'merged'.
 if connectStampsMerged:
 	connectStamp += [row[1] for row in connectStampsMerged]
 	connectTime += [row[0] for row in connectStampsMerged]
@@ -234,35 +225,59 @@ if disconnectStamps:
 	minmaxListStamp += [row[1] for row in disconnectStamps]
 	minmaxListTime += [row[0] for row in disconnectStamps]
 
-if noEventPackets:  # Only execute when noEventPackets exists
+if noEventPackets:
 	noEventPacketsTime = [row[0] for row in noEventPackets]
 	noEventPacketsStamp = [row[1] for row in noEventPackets]
 	minmaxListStamp += [row[1] for row in noEventPackets]
 	minmaxListTime += [row[0] for row in noEventPackets]
 
-plt.bar(connectTime, connectStamp, width, color='red', align='center', label='Connect Event')
-plt.bar(disconnectTime, disconnectStamp, width, color='blue', align='center', label='Disconnect Event')
-plt.bar(noEventPacketsTime, noEventPacketsStamp, width, color='green', align='center', label='Unknown Event')
+# Scale all timestamps to seconds for better visability
+connectTimeIterator = []
+connectTimeIterator += connectTime
+connectTimeScaled = []
+for temp in connectTimeIterator:
+	connectTimeScaled.append((temp - float(start)) / 1000000)
 
-#legend = plt.legend(loc='upper right', fontsize='x-large')  # Draw the legend
+disconnectTimeIterator = []
+disconnectTimeIterator += disconnectTime
+disconnectTimeScaled = []
+for temp in disconnectTimeIterator:
+	disconnectTimeScaled.append((temp - float(start)) / 1000000)
+
+noEventPacketsTimeIterator = []
+noEventPacketsTimeIterator += noEventPacketsTime
+noEventPacketsTimeScaled = []
+for temp in noEventPacketsTimeIterator:
+	noEventPacketsTimeScaled.append((temp - float(start)) / 1000000)
+
+# Print the bars
+plt.bar(connectTimeScaled, connectStamp, width, color='red', align='center', label='Connect Event')
+plt.bar(disconnectTimeScaled, disconnectStamp, width, color='blue', align='center', label='Disconnect Event')
+plt.bar(noEventPacketsTimeScaled, noEventPacketsStamp, width, color='green', align='center', label='Unknown Event')
+
+# legend = plt.legend(loc='upper right', fontsize='x-large')  # Draw the legend
 
 # Set the x and y axes ranges
 minmaxListTime = sorted(minmaxListTime) # Sort the list
-minmaxListStamp = sorted(minmaxListStamp)   # Sort the list
+minmaxListTimeIterator = []
+minmaxListTimeIterator += minmaxListTime
+minmaxListTimeScaled = []
+for temp in minmaxListTimeIterator:
+	minmaxListTimeScaled.append((temp - float(start)) / 1000000)
 
-pylab.xlim([min(minmaxListTime) - (width * 4), max(minmaxListTime) + (width * 4)])
+pylab.xlim([0, max(minmaxListTimeScaled) + (width * 4)])
 pylab.ylim([0, max(minmaxListStamp) + max(minmaxListStamp)/50])
 
+ax.xaxis.set_major_locator(MultipleLocator(50)) # Sets the x axis scale
+
 # Set the labels
-label = []
+# label = []
+# for temp in minmaxListTime:
+	# label.append('{0:.0f}'.format(temp))
+# plt.xticks(minmaxListTime, label, rotation='vertical')
 
-for temp in minmaxListTime:
-	label.append('{0:.0f}'.format(temp))
-
-plt.xticks(minmaxListTime, label, rotation='vertical')
-
-# Set labels for axes
-plt.xlabel('Unix timestamp / last three digits are nanosecond')
+# Set axe labels
+plt.xlabel('Unix timestamp / seconds')
 plt.ylabel('Lost packets / 1 packet')
 
 # Make room for the labels
@@ -278,6 +293,3 @@ file2.close()
 
 # Show the figure
 plt.show()
-
-
-
